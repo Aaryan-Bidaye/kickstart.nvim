@@ -9,7 +9,28 @@ return {
     'stevearc/oil.nvim',
     ---@module 'oil'
     ---@type oil.SetupOpts
-    opts = {},
+    opts = {
+      float = {
+        -- Padding around the floating window
+        padding = 2,
+        -- max_width and max_height can be integers or a float between 0 and 1 (e.g. 0.4 for 40%)
+        max_width = 0,
+        max_height = 0,
+        border = 'rounded',
+        win_options = {
+          winblend = 0,
+        },
+        -- optionally override the oil buffers window title with custom function: fun(winid: integer): string
+        get_win_title = nil,
+        -- preview_split: Split direction: "auto", "left", "right", "above", "below".
+        preview_split = 'auto',
+        -- This is the config that will be passed to nvim_open_win.
+        -- Change values here to customize the layout
+        override = function(conf)
+          return conf
+        end,
+      },
+    },
     -- Optional dependencies
     dependencies = { { 'nvim-mini/mini.icons', opts = {} } },
     --dependencies = { 'nvim-tree/nvim-web-devicons' }, -- use if you prefer nvim-web-devicons
@@ -18,20 +39,33 @@ return {
   },
   {
     'nvim-lualine/lualine.nvim',
-    dependencies = { 'nvim-tree/nvim-web-devicons' }, -- optional, for icons
-    event = 'VeryLazy', -- lazy-load so it’s available after startup
+    event = 'VeryLazy',
     config = function()
-      local ok, lualine = pcall(require, 'lualine')
-      if not ok then
-        return
-      end
-      lualine.setup {
+      require('lualine').setup {
         options = {
-          theme = 'auto',
-          icons_enabled = true,
-          globalstatus = true, -- single statusline across splits (nvim 0.7+)
+          theme = 'mytheme', -- it will resolve lua/lualine/themes/mytheme.lua
+          section_separators = { left = '', right = '' },
+          component_separators = { left = '', right = '' },
+          globalstatus = true,
+        },
+        sections = {
+          lualine_a = { 'mode' },
+          lualine_b = { 'branch', 'diff', 'diagnostics' },
+          lualine_c = { { 'filename', path = 1 } },
+          lualine_x = { 'encoding', 'fileformat', 'filetype' },
+          lualine_y = { 'progress' },
+          lualine_z = { 'location' },
+        },
+        inactive_sections = {
+          lualine_a = {},
+          lualine_b = {},
+          lualine_c = { { 'filename', path = 1 } },
+          lualine_x = { 'location' },
+          lualine_y = {},
+          lualine_z = {},
         },
       }
     end,
   },
+  'mbbill/undotree',
 }

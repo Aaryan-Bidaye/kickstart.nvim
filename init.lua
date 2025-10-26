@@ -89,7 +89,6 @@ P.S. You can delete this when you're done too. It's your config now! :)
 --  NOTE: Must happen before plugins are loaded (otherwise wrong leader will be used)
 vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
-
 -- Set to true if you have a Nerd Font installed and selected in the terminal
 vim.g.have_nerd_font = false
 
@@ -198,6 +197,65 @@ vim.keymap.set('n', '<leader>T', function()
   togglewin.toggle_float() -- or: togglewin.toggle_float({ width = 100, height = 24 })
 end, { desc = 'Toggle persistent terminal (float)' })
 
+-- Run make
+vim.keymap.set('n', '<leader>m', function()
+  -- Only press <leader>tt if not in terminal
+  if vim.bo.buftype ~= 'terminal' then
+    local keys = vim.api.nvim_replace_termcodes('<leader>tt', true, false, true)
+    vim.api.nvim_feedkeys(keys, 'm', false)
+  end
+
+  vim.api.nvim_feedkeys('make clean\r\n', 't', true)
+  vim.api.nvim_feedkeys('make\r\n', 't', true)
+end, { desc = 'Make' })
+
+-- Run make and flash code to microcontroller
+vim.keymap.set('n', '<leader>mf', function()
+  -- Only press <leader>tt if not in terminal
+  if vim.bo.buftype ~= 'terminal' then
+    local keys = vim.api.nvim_replace_termcodes('<leader>tt', true, false, true)
+    vim.api.nvim_feedkeys(keys, 'm', false)
+  end
+
+  vim.api.nvim_feedkeys('make clean\r\n', 't', true)
+  vim.api.nvim_feedkeys('make\r\n', 't', true)
+  vim.api.nvim_feedkeys('make flash\r\n', 't', true)
+end, { desc = 'Make and Flash' })
+
+-- Reattach serial screen if it exists; otherwise start a new one
+vim.keymap.set({ 'n', 't' }, '<C-s><C-m>', function()
+  local port = '/dev/tty.usbmodem1301' -- ← change on macOS to e.g. '/dev/tty.usbserial-110'
+  local baud = 9600
+
+  local devbase = port:match '[^/]+$' or port
+  local lines = vim.fn.systemlist 'screen -ls 2>/dev/null || true'
+
+  -- Find a detached (or any) screen whose name mentions the device (e.g. "12345.ttyUSB0")
+  local found
+  for _, line in ipairs(lines) do
+    -- typical lines look like: "    12345.ttyUSB0   (Detached)"
+    if line:match(devbase) then
+      local id = line:match '(%d+%.%S+)'
+      if id then
+        found = id
+        break
+      end
+    end
+  end
+
+  if found then
+    -- Reattach, detaching it elsewhere if needed
+    vim.cmd('vsplit term://bash -lc "screen -d -r ' .. found .. '"')
+  else
+    -- Optional: try to clean stale lock quietly (remove sudo if you don't need it)
+    -- vim.fn.system('sudo rm -f /var/lock/LCK..' .. devbase .. ' 2>/dev/null || true')
+
+    -- Small delay can help if device just re-enumerated
+    vim.defer_fn(function()
+      vim.cmd(('vsplit term://screen %s %d'):format(port, baud))
+    end, 300)
+  end
+end, { desc = 'Serial Monitor (reattach or start screen)' })
 -- TIP: Disable arrow keys in normal mode
 -- vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
 -- vim.keymap.set('n', '<right>', '<cmd>echo "Use l to move!!"<CR>')
@@ -208,10 +266,10 @@ end, { desc = 'Toggle persistent terminal (float)' })
 --  Use CTRL+<hjkl> to switch between windows
 --
 --  See `:help wincmd` for a list of all window commands
-vim.keymap.set('n', '<C-h>', '<C-w><C-h>', { desc = 'Move focus to the left window' })
-vim.keymap.set('n', '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right window' })
-vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
-vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
+vim.keymap.set({ 'n', 't' }, '<C-h>', '<C-w><C-h>', { desc = 'Move focus to the left window' })
+vim.keymap.set({ 'n', 't' }, '<C-l>', '<C-w><C-l>', { desc = 'Move focus to the right window' })
+vim.keymap.set({ 'n', 't' }, '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
+vim.keymap.set({ 'n', 't' }, '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
 
 -- NOTE: Some terminals have colliding keymaps or are not able to send distinct keycodes
 -- vim.keymap.set("n", "<C-S-h>", "<C-w>H", { desc = "Move window to the left" })
@@ -226,15 +284,15 @@ vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper win
 --  Try it with `yap` in normal mode
 --  See `:help vim.hl.on_yank()`
 vim.api.nvim_create_autocmd('TextYankPost', {
-  desc = 'Highlight when yanking (copying) text',
-  group = vim.api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
   callback = function()
-    vim.hl.on_yank()
+    vim.highlight.on_yank {
+      higroup = 'YankHighlight',
+      timeout = 100,
+    }
   end,
 })
 --
 --
-
 -- Oil keymap
 vim.keymap.set('n', '-', '<CMD>Oil --float<CR>', { desc = 'Open parent directory' })
 --
@@ -881,7 +939,6 @@ require('lazy').setup({
 
       -- Blink.cmp includes an optional, recommended rust fuzzy matcher,
       -- which automatically downloads a prebuilt binary when enabled.
-      --
       -- By default, we use the Lua implementation instead, but you may enable
       -- the rust implementation via `'prefer_rust_with_warning'`
       --
@@ -896,7 +953,6 @@ require('lazy').setup({
   { -- You can easily change to a different colorscheme.
     -- Change the name of the colorscheme plugin below, and then
     -- change the command in the config to whatever the name of that colorscheme is.
-    --
     -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
     'folke/tokyonight.nvim',
     priority = 1000, -- Make sure to load this before all the other start plugins.
@@ -907,11 +963,13 @@ require('lazy').setup({
           comments = { italic = false }, -- Disable italics in comments
         },
       }
-
       -- Load the colorscheme here.
       -- Like many other themes, this one has different styles, and you could load
       -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'tokyonight-night'
+      vim.g.mytheme_transparent = true -- or true
+      vim.g.mytheme_italic = true
+      vim.g.mytheme_bold = true
+      vim.cmd.colorscheme 'mytheme'
     end,
   },
 
@@ -1009,12 +1067,12 @@ require('lazy').setup({
   -- For example, to print the entire configuration:
   -- Lua
   -- require('lualine').setup {
-  --   options = {
-  --     -- ... your lualine config
-  --     theme = 'tokyonight',
-  --     -- ... your lualine config
-  --   },
-  -- },
+  --    options = {
+  --        -- ... your lualine config
+  --        theme = 'tokyonight',
+  --        -- ... your lualine config
+  --      },
+  --    },
 
   --
   -- For additional information with loading, sourcing and examples see `:help lazy.nvim-🔌-plugin-spec`
