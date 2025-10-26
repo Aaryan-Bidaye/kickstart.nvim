@@ -285,10 +285,7 @@ vim.keymap.set({ 'n', 't' }, '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the 
 --  See `:help vim.hl.on_yank()`
 vim.api.nvim_create_autocmd('TextYankPost', {
   callback = function()
-    vim.highlight.on_yank {
-      higroup = 'YankHighlight',
-      timeout = 100,
-    }
+    vim.highlight.on_yank { higroup = 'YankHighlight', timeout = 80 }
   end,
 })
 --
