@@ -45,7 +45,9 @@ return {
         options = {
           theme = 'mytheme', -- it will resolve lua/lualine/themes/mytheme.lua
           section_separators = { left = '', right = '' },
+          --section_separators = { left = '|', right = '|' },
           component_separators = { left = '', right = '' },
+          --component_separators = { left = '|', right = '|' },
           globalstatus = true,
         },
         sections = {

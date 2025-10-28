@@ -20,11 +20,11 @@ local p = {
   border = '#3a3b35',
   fg = '#f8f8f2',
   comment = '#75715e',
-  pink = '#f92672', -- accent for replace/keyword vibe
+  pink = '#f92672', -- accent for normal/keyword vibe
   orange = '#fd971f',
   yellow = '#e6db74',
   green = '#a6e22e',
-  aqua = '#66d9ef', -- accent for normal mode
+  aqua = '#66d9ef', -- accent for replace mode
   purple = '#ae81ff',
 }
 
@@ -37,10 +37,10 @@ local function mode(a_bg)
   }
 end
 
-M.normal = mode(p.aqua) -- NORMAL → aqua/blue-ish
+M.normal = mode(p.pink) -- NORMAL → aqua/blue-ish
 M.insert = mode(p.green) -- INSERT → green
 M.visual = mode(p.purple) -- VISUAL → purple
-M.replace = mode(p.pink) -- REPLACE → Monokai pink (keywords)
+M.replace = mode(p.aqua) -- REPLACE → Monokai pink (keywords)
 M.command = mode(p.yellow) -- COMMAND → yellow
 M.terminal = mode(p.orange)
 
