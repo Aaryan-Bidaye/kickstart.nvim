@@ -72,6 +72,49 @@ local function get_current_dir()
   return vim.fn.getcwd()
 end
 
+-- Get the actual current working directory of a terminal buffer
+local function get_terminal_cwd(buf)
+  if not vim.api.nvim_buf_is_valid(buf) or vim.bo[buf].buftype ~= 'terminal' then
+    return nil
+  end
+
+  local job_id = vim.b[buf].terminal_job_id
+  if not job_id then
+    return nil
+  end
+
+  -- Get the PID of the terminal job
+  local pid = vim.fn.jobpid(job_id)
+  if not pid or pid <= 0 then
+    return nil
+  end
+
+  -- Try Linux first: read /proc/<pid>/cwd symlink
+  local proc_path = '/proc/' .. pid .. '/cwd'
+  local ok, cwd = pcall(vim.loop.fs_readlink, proc_path)
+  if ok and cwd then
+    return cwd
+  end
+
+  -- Try macOS: use lsof to get the current working directory
+  local lsof_cmd = string.format('lsof -a -p %d -d cwd -Fn 2>/dev/null | grep "^n" | cut -c2-', pid)
+  local handle = io.popen(lsof_cmd)
+  if handle then
+    local result = handle:read '*a'
+    handle:close()
+    if result and result ~= '' then
+      -- Remove trailing newline
+      cwd = result:gsub('%s+$', '')
+      if cwd ~= '' then
+        return cwd
+      end
+    end
+  end
+
+  -- Fallback: use the stored directory if we can't get the live one
+  return vim.b[buf].terminal_cwd
+end
+
 -- ========= persistent terminal buffers per directory =========
 local function ensure_term_buf()
   local cwd = get_current_dir()
@@ -221,18 +264,19 @@ end
 
 -- List and switch between terminal buffers
 function M.list_terminals()
-  -- Collect valid terminals
+  -- Collect valid terminals with their current working directories
   local terminals = {}
-  for cwd, buf in pairs(state.terms) do
+  for stored_cwd, buf in pairs(state.terms) do
     if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == 'terminal' then
+      local live_cwd = get_terminal_cwd(buf) or stored_cwd
       table.insert(terminals, {
-        cwd = cwd,
+        cwd = live_cwd,
         buf = buf,
-        display = cwd,
+        display = live_cwd,
       })
     else
       -- Clean up invalid buffers
-      state.terms[cwd] = nil
+      state.terms[stored_cwd] = nil
     end
   end
 
